@@ -1,0 +1,40 @@
+version: '3'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+    - "5672"
+    - "15672:15672"
+
+  redis:
+    image: redis:3-alpine
+    ports:
+    - "6379"
+
+  celery:
+    container_name: celery
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: celery-return-types-test
+    depends_on:
+    - rabbitmq
+    - redis
+    environment:
+    - CELERY_BROKER=amqp://guest:guest@rabbitmq:5672
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    - LOGLEVEL=INFO
+    ports:
+    - "8000:8000"
+
+  runner:
+    image: celery-return-types-test
+    command: python -c 'from sample.script import run_workflow; run_workflow()'
+    depends_on:
+      - rabbitmq
+      - redis
+      - celery
+    environment:
+      - CELERY_BROKER=amqp://guest:guest@rabbitmq:5672
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - LOGLEVEL=INFO
